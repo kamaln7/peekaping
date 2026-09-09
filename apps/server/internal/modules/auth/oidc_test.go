@@ -759,3 +759,24 @@ func TestIsUniqueViolation_MatchesTheDriverError(t *testing.T) {
 	assert.True(t, isUniqueViolation(err),
 		"the driver's unique violation must be recognised, got: %v", err)
 }
+
+func TestOIDC_ClientMetadataDocumentIsServedAndCacheable(t *testing.T) {
+	op := newFakeOP(t)
+	h := newHarness(t, op, func(c *config.Config) { c.OIDCClientID = "" })
+
+	rec := httptest.NewRecorder()
+	h.router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/auth/oidc/client", nil))
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	// An OP has to persist the client it resolves from this document, so a
+	// no-store response makes the whole CIMD mode unusable.
+	cc := rec.Header().Get("Cache-Control")
+	assert.NotContains(t, cc, "no-store")
+	assert.Contains(t, cc, "max-age=")
+
+	var doc map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &doc))
+	assert.Equal(t, "https://peekaping.example/api/v1/auth/oidc/client", doc["client_id"])
+	assert.Equal(t, "none", doc["token_endpoint_auth_method"])
+	assert.Equal(t, []any{"code"}, doc["response_types"])
+}

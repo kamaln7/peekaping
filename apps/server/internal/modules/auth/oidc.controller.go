@@ -40,6 +40,9 @@ func (c *Controller) OIDCClient(ctx *gin.Context) {
 		ctx.JSON(http.StatusNotFound, utils.NewFailResponse("not found"))
 		return
 	}
+	// An explicit lifetime rather than the provider's default. It must never be
+	// no-store: an OP has to persist the client it resolves from this document.
+	ctx.Header("Cache-Control", "public, max-age=3600")
 	ctx.JSON(http.StatusOK, c.oidc.clientMetadataDocument())
 }
 
