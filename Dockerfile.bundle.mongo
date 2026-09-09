@@ -20,7 +20,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY patches/ ./patches/
 COPY apps/web/package.json ./apps/web/package.json
-RUN npm install -g pnpm && pnpm install --filter=web
+RUN npm install -g pnpm@9 && pnpm install --filter=web
 COPY apps/web/ ./apps/web/
 WORKDIR /app/apps/web
 RUN pnpm run build

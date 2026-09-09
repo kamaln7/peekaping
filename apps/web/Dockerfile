@@ -3,7 +3,7 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 # Install pnpm globally
-RUN npm install -g pnpm
+RUN npm install -g pnpm@9
 
 # Copy workspace configuration and lock file from monorepo root
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
