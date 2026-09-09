@@ -66,6 +66,13 @@ type Config struct {
 	// Examples: "5m", "30m", "1h", "24h"
 	BruteforceLockout time.Duration `env:"BRUTEFORCE_LOCKOUT" default:"1m"`
 
+	// Comma-separated list of proxy IPs/CIDRs whose X-Forwarded-For header is trusted
+	// when determining the client IP (used for bruteforce keying).
+	// Default trusts only loopback (the bundled Caddy runs in the same container).
+	// Set to your reverse proxy's address/subnet when it runs elsewhere, "*" to trust
+	// any proxy, or "none" to trust none and always use the direct peer address.
+	TrustedProxies string `env:"TRUSTED_PROXIES" default:"127.0.0.1,::1"`
+
 	ServiceName string `env:"SERVICE_NAME" validate:"required,min=1" default:"peekaping:api"`
 }
 

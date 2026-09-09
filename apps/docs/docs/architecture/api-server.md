@@ -74,6 +74,7 @@ The API server subscribes to Redis pub/sub events and broadcasts them to connect
 | `BRUTEFORCE_MAX_ATTEMPTS` | int | No | `20` | Maximum login attempts before lockout |
 | `BRUTEFORCE_WINDOW` | duration | No | `1m` | Time window for counting failed attempts |
 | `BRUTEFORCE_LOCKOUT` | duration | No | `1m` | Lockout duration after max attempts |
+| `TRUSTED_PROXIES` | string | No | `127.0.0.1,::1` | Comma-separated proxy IPs/CIDRs whose `X-Forwarded-For` is trusted for the client IP (used to key bruteforce protection). Use `*` to trust any proxy, `none` to trust none. |
 
 ## API Endpoints
 

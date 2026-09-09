@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect"
 )
 
 // sqlModel represents the database model for login state
@@ -129,11 +130,14 @@ func (r *SQLRepositoryImpl) OnFailure(ctx context.Context, key string, now time.
 
 	err := r.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		var sm sqlModel
-		err := tx.NewSelect().
+		q := tx.NewSelect().
 			Model(&sm).
-			Where("key = ?", key).
-			For("UPDATE").
-			Scan(ctx)
+			Where("key = ?", key)
+		// SQLite has no SELECT ... FOR UPDATE; its transactions serialize writes anyway.
+		if r.db.Dialect().Name() != dialect.SQLite {
+			q = q.For("UPDATE")
+		}
+		err := q.Scan(ctx)
 
 		windowStart := now.Add(-window)
 

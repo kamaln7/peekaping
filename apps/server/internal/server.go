@@ -2,6 +2,8 @@ package internal
 
 import (
 	"net/http"
+	"strings"
+
 	_ "peekaping/docs"
 	"peekaping/internal/config"
 	"peekaping/internal/modules/api_key"
@@ -46,6 +48,24 @@ func versionHandler(ctx *gin.Context) {
 // @Router       /health [get]
 func healthHandler(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"status": "success"})
+}
+
+// parseTrustedProxies turns the TRUSTED_PROXIES config value into a list gin accepts.
+// "*" trusts every proxy, "none" trusts none.
+func parseTrustedProxies(v string) []string {
+	switch strings.TrimSpace(v) {
+	case "*":
+		return []string{"0.0.0.0/0", "::/0"}
+	case "", "none":
+		return nil
+	}
+	var out []string
+	for _, p := range strings.Split(v, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 type Server struct {
@@ -94,6 +114,12 @@ func ProvideServer(
 	}
 
 	server.RedirectTrailingSlash = false
+
+	// Only these proxies may set X-Forwarded-For; otherwise c.ClientIP() (used to key
+	// bruteforce protection) is either spoofable or collapses to the proxy's own IP.
+	if err := server.SetTrustedProxies(parseTrustedProxies(cfg.TrustedProxies)); err != nil {
+		logger.Fatalw("invalid TRUSTED_PROXIES", "value", cfg.TrustedProxies, "error", err)
+	}
 
 	// CORS configuration
 	server.Use(cors.New(cors.Config{

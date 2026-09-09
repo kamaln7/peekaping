@@ -45,6 +45,9 @@ type Config struct {
 	BruteforceWindow      time.Duration `env:"BRUTEFORCE_WINDOW" default:"1m"`
 	BruteforceLockout     time.Duration `env:"BRUTEFORCE_LOCKOUT" default:"1m"`
 
+	// Proxy IPs/CIDRs allowed to set X-Forwarded-For ("*" = any, "none" = trust none)
+	TrustedProxies string `env:"TRUSTED_PROXIES" default:"127.0.0.1,::1"`
+
 	ServiceName string `env:"SERVICE_NAME" validate:"required,min=1" default:"peekaping:api"`
 }
 
@@ -124,6 +127,7 @@ func (c *Config) ToInternalConfig() *config.Config {
 		BruteforceMaxAttempts: c.BruteforceMaxAttempts,
 		BruteforceWindow:      c.BruteforceWindow,
 		BruteforceLockout:     c.BruteforceLockout,
+		TrustedProxies:        c.TrustedProxies,
 		ServiceName:           c.ServiceName,
 	}
 }
