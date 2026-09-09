@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect"
 )
 
 type sqlModel struct {
@@ -189,37 +188,30 @@ func isUniqueViolation(err error) bool {
 }
 
 func (r *SQLRepositoryImpl) CreateFirst(ctx context.Context, user *Model) (bool, *Model, error) {
+	// Legacy installs have a randomly-generated admin ID, which the fixed key
+	// below would not collide with; the count covers that case, and it cannot
+	// race because an existing admin is stable.
+	count, err := r.FindAllCount(ctx)
+	if err != nil {
+		return false, nil, err
+	}
+	if count > 0 {
+		return false, nil, nil
+	}
+
 	sm := toSQLModel(user)
 	sm.ID = bootstrapUserID
 	sm.CreatedAt = time.Now()
 	sm.UpdatedAt = time.Now()
 
-	// INSERT ... SELECT ... WHERE NOT EXISTS keeps legacy installs (whose admin
-	// has a random ID) from gaining a second admin. It is not enough on its own:
-	// under Read Committed two concurrent statements both see an empty table. The
-	// fixed primary key is what makes the second one fail.
-	from := ""
-	if r.db.Dialect().Name() == dialect.MySQL {
-		from = " FROM DUAL"
-	}
-	res, err := r.db.ExecContext(ctx,
-		`INSERT INTO users (id, email, password, active, twofa_secret, twofa_status, twofa_last_token, oidc_subject, created_at, updated_at)
-		 SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?`+from+` WHERE NOT EXISTS (SELECT 1 FROM users)`,
-		sm.ID, sm.Email, sm.Password, sm.Active, sm.TwoFASecret, sm.TwoFAStatus,
-		sm.TwoFALastToken, sm.OIDCSubject, sm.CreatedAt, sm.UpdatedAt,
-	)
-	if err != nil {
+	// The fixed primary key is what makes concurrent bootstraps safe whatever the
+	// isolation level: under Read Committed both transactions see an empty table,
+	// so the second one has to fail on the key itself.
+	if _, err := r.db.NewInsert().Model(sm).Exec(ctx); err != nil {
 		if isUniqueViolation(err) {
 			return false, nil, nil
 		}
 		return false, nil, err
-	}
-	affected, err := res.RowsAffected()
-	if err != nil {
-		return false, nil, err
-	}
-	if affected == 0 {
-		return false, nil, nil
 	}
 	return true, toDomainModelFromSQL(sm), nil
 }

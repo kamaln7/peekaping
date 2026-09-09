@@ -702,3 +702,60 @@ func mustQuery(t *testing.T, rawURL, key string) string {
 	require.NotEmpty(t, v, "missing %s in %s", key, rawURL)
 	return v
 }
+
+func TestCreateFirst(t *testing.T) {
+	ctx := context.Background()
+	repo := NewSQLRepository(newOIDCTestDB(t))
+
+	created, user, err := repo.CreateFirst(ctx, &Model{Email: "first@example.com", Active: true})
+	require.NoError(t, err)
+	require.True(t, created)
+	assert.Equal(t, bootstrapUserID, user.ID, "the bootstrap admin has a fixed primary key")
+
+	// A second bootstrap, different email: refused, and nothing is written.
+	created, _, err = repo.CreateFirst(ctx, &Model{Email: "second@example.com", Active: true})
+	require.NoError(t, err)
+	assert.False(t, created)
+
+	count, err := repo.FindAllCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), count)
+}
+
+func TestCreateFirst_LegacyAdminKeepsItsRandomID(t *testing.T) {
+	ctx := context.Background()
+	repo := NewSQLRepository(newOIDCTestDB(t))
+
+	// An admin registered before this change has a random ID, which the fixed
+	// bootstrap key would not collide with: the count check is what refuses here.
+	legacy, err := repo.Create(ctx, &Model{Email: "legacy@example.com", Password: "hash", Active: true})
+	require.NoError(t, err)
+	require.NotEqual(t, bootstrapUserID, legacy.ID)
+
+	created, _, err := repo.CreateFirst(ctx, &Model{Email: "new@example.com", Active: true})
+	require.NoError(t, err)
+	assert.False(t, created)
+
+	count, err := repo.FindAllCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), count)
+}
+
+func TestIsUniqueViolation_MatchesTheDriverError(t *testing.T) {
+	ctx := context.Background()
+	db := newOIDCTestDB(t)
+	repo := NewSQLRepository(db)
+
+	created, _, err := repo.CreateFirst(ctx, &Model{Email: "first@example.com", Active: true})
+	require.NoError(t, err)
+	require.True(t, created)
+
+	// The count check normally short-circuits, so drive the collision the way a
+	// concurrent bootstrap would: insert the fixed key straight into the table.
+	_, err = db.NewInsert().Model(&sqlModel{
+		ID: bootstrapUserID, Email: "second@example.com", Active: true,
+	}).Exec(ctx)
+	require.Error(t, err)
+	assert.True(t, isUniqueViolation(err),
+		"the driver's unique violation must be recognised, got: %v", err)
+}
