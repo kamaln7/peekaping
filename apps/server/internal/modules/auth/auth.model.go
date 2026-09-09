@@ -12,6 +12,7 @@ type Model struct {
 	TwoFASecret    string    `json:"-"`
 	TwoFAStatus    bool      `json:"twofa_status"`
 	TwoFALastToken string    `json:"-"`
+	OIDCSubject    string    `json:"-"`
 	CreatedAt      time.Time `json:"createdAt"`
 	UpdatedAt      time.Time `json:"updatedAt"`
 }

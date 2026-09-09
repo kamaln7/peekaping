@@ -31,6 +31,18 @@ import type {
   PostAuthLoginData,
   PostAuthLoginResponses,
   PostAuthLoginErrors,
+  GetAuthMeData,
+  GetAuthMeResponses,
+  GetAuthMeErrors,
+  GetAuthOidcCallbackData,
+  GetAuthOidcCallbackErrors,
+  GetAuthOidcClientData,
+  GetAuthOidcClientResponses,
+  GetAuthOidcClientErrors,
+  GetAuthOidcLoginData,
+  GetAuthOidcLoginErrors,
+  GetAuthOidcStatusData,
+  GetAuthOidcStatusResponses,
   PutAuthPasswordData,
   PutAuthPasswordResponses,
   PutAuthPasswordErrors,
@@ -477,6 +489,95 @@ export const postAuthLogin = <ThrowOnError extends boolean = false>(
       "Content-Type": "application/json",
       ...options.headers,
     },
+  });
+};
+
+/**
+ * Current user
+ */
+export const getAuthMe = <ThrowOnError extends boolean = false>(
+  options?: Options<GetAuthMeData, ThrowOnError>
+) => {
+  return (options?.client ?? _heyApiClient).get<
+    GetAuthMeResponses,
+    GetAuthMeErrors,
+    ThrowOnError
+  >({
+    responseType: "json",
+    security: [
+      {
+        name: "Authorization",
+        type: "apiKey",
+      },
+    ],
+    url: "/auth/me",
+    ...options,
+  });
+};
+
+/**
+ * OIDC authorization code callback
+ */
+export const getAuthOidcCallback = <ThrowOnError extends boolean = false>(
+  options?: Options<GetAuthOidcCallbackData, ThrowOnError>
+) => {
+  return (options?.client ?? _heyApiClient).get<
+    unknown,
+    GetAuthOidcCallbackErrors,
+    ThrowOnError
+  >({
+    url: "/auth/oidc/callback",
+    ...options,
+  });
+};
+
+/**
+ * OAuth client ID metadata document
+ */
+export const getAuthOidcClient = <ThrowOnError extends boolean = false>(
+  options?: Options<GetAuthOidcClientData, ThrowOnError>
+) => {
+  return (options?.client ?? _heyApiClient).get<
+    GetAuthOidcClientResponses,
+    GetAuthOidcClientErrors,
+    ThrowOnError
+  >({
+    responseType: "json",
+    url: "/auth/oidc/client",
+    ...options,
+  });
+};
+
+/**
+ * Start the OIDC authorization code flow
+ */
+export const getAuthOidcLogin = <ThrowOnError extends boolean = false>(
+  options?: Options<GetAuthOidcLoginData, ThrowOnError>
+) => {
+  return (options?.client ?? _heyApiClient).get<
+    unknown,
+    GetAuthOidcLoginErrors,
+    ThrowOnError
+  >({
+    url: "/auth/oidc/login",
+    ...options,
+  });
+};
+
+/**
+ * Whether OIDC login is configured
+ */
+export const getAuthOidcStatus = <ThrowOnError extends boolean = false>(
+  options?: Options<GetAuthOidcStatusData, ThrowOnError>
+) => {
+  return (options?.client ?? _heyApiClient).get<
+    GetAuthOidcStatusResponses,
+    unknown,
+    ThrowOnError
+  >({
+    responseType: "json",
+    url: "/auth/oidc/status",
+    ...options,
   });
 };
 

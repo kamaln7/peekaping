@@ -13,17 +13,23 @@ import (
 )
 
 type Controller struct {
-	service Service
-	logger  *zap.SugaredLogger
+	service    Service
+	tokenMaker *TokenMaker
+	oidc       *OIDC
+	logger     *zap.SugaredLogger
 }
 
 func NewController(
 	service Service,
+	tokenMaker *TokenMaker,
+	oidc *OIDC,
 	logger *zap.SugaredLogger,
 ) *Controller {
 	return &Controller{
-		service: service,
-		logger:  logger,
+		service:    service,
+		tokenMaker: tokenMaker,
+		oidc:       oidc,
+		logger:     logger,
 	}
 }
 

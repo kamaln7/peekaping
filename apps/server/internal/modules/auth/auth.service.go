@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/pquerna/otp/totp"
@@ -15,6 +16,11 @@ type Service interface {
 	Login(ctx context.Context, dto LoginDto) (*LoginResponse, error)
 	RefreshToken(ctx context.Context, refreshToken string) (*LoginResponse, error)
 	UpdatePassword(ctx context.Context, userId string, dto UpdatePasswordDto) error
+	GetByID(ctx context.Context, userId string) (*Model, error)
+
+	// OIDC
+	LoginOIDCBound(ctx context.Context, issuer, subject string) (*LoginResponse, error)
+	LinkOIDC(ctx context.Context, identity OIDCIdentity) (*LoginResponse, error)
 
 	// 2FA methods
 	SetupTwoFA(ctx context.Context, userId, password string) (secret string, provisioningURI string, err error)
@@ -41,37 +47,17 @@ func NewService(
 }
 
 func (s *ServiceImpl) Register(ctx context.Context, dto RegisterDto) (*LoginResponse, error) {
-	count, err := s.repo.FindAllCount(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	if count > 0 {
-		return nil, errors.New("admin already exists")
-	}
-	// Check if admin with this email already exists
-	existingAdmin, err := s.repo.FindByEmail(ctx, dto.Email)
-	if err == nil && existingAdmin != nil {
-		return nil, errors.New("admin with this email already exists")
-	}
-
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(dto.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create new admin
-	user := &Model{
-		Email:     dto.Email,
-		Password:  string(hashedPassword),
-		Active:    true,
-		CreatedAt: time.Now().UTC(),
-		UpdatedAt: time.Now().UTC(),
-	}
-
-	// Save to database
-	user, err = s.repo.Create(ctx, user)
+	user, err := s.createFirstUser(ctx, &Model{
+		Email:    strings.ToLower(dto.Email),
+		Password: string(hashedPassword),
+		Active:   true,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -184,10 +170,12 @@ func (s *ServiceImpl) UpdatePassword(ctx context.Context, userId string, dto Upd
 		return errors.New("user not found")
 	}
 
-	// Verify current password
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(dto.CurrentPassword))
-	if err != nil {
-		return errors.New("current password is incorrect")
+	// An OIDC-bootstrapped admin has no password yet; bcrypt never matches an
+	// empty hash, so skip the check to let them set the first one.
+	if user.Password != "" {
+		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(dto.CurrentPassword)); err != nil {
+			return errors.New("current password is incorrect")
+		}
 	}
 
 	// Hash new password
@@ -302,4 +290,138 @@ func (s *ServiceImpl) DisableTwoFA(ctx context.Context, userId, password string)
 	}
 
 	return nil
+}
+
+// ErrOIDCUnbound means no user carries this OIDC subject yet.
+var ErrOIDCUnbound = errors.New("oidc subject not bound")
+
+// ErrOIDCNotAdmin means the identity may not become (or take over) the admin.
+var ErrOIDCNotAdmin = errors.New("not the peekaping admin")
+
+// OIDCIdentity is the verified identity the callback handler gathered.
+type OIDCIdentity struct {
+	Issuer        string
+	Subject       string
+	Email         string
+	EmailVerified bool
+}
+
+// OIDCSubjectKey is the value stored in users.oidc_subject.
+func OIDCSubjectKey(issuer, sub string) string {
+	return issuer + "|" + sub
+}
+
+func (s *ServiceImpl) GetByID(ctx context.Context, userId string) (*Model, error) {
+	user, err := s.repo.FindByID(ctx, userId)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, errors.New("user not found")
+	}
+	return user, nil
+}
+
+// createFirstUser inserts the one admin this install may have, atomically.
+func (s *ServiceImpl) createFirstUser(ctx context.Context, user *Model) (*Model, error) {
+	user.CreatedAt = time.Now().UTC()
+	user.UpdatedAt = time.Now().UTC()
+
+	created, out, err := s.repo.CreateFirst(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	if !created {
+		return nil, errors.New("admin already exists")
+	}
+	return out, nil
+}
+
+func (s *ServiceImpl) issueTokens(ctx context.Context, user *Model) (*LoginResponse, error) {
+	accessToken, err := s.tokenMaker.CreateAccessToken(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	refreshToken, err := s.tokenMaker.CreateRefreshToken(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	return &LoginResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		User:         user,
+	}, nil
+}
+
+// LoginOIDCBound logs in a user already bound to this subject. Email is never
+// consulted, so renaming the address at the OP changes nothing.
+func (s *ServiceImpl) LoginOIDCBound(ctx context.Context, issuer, subject string) (*LoginResponse, error) {
+	key := OIDCSubjectKey(issuer, subject)
+
+	user, err := s.repo.FindByOIDCSubject(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	// Re-compare in Go: a case-insensitive collation on any backend must not be
+	// able to hand tokens to a different account.
+	if user == nil || user.OIDCSubject != key {
+		return nil, ErrOIDCUnbound
+	}
+
+	return s.issueTokens(ctx, user)
+}
+
+// LinkOIDC binds an unbound subject to the admin account, bootstrapping it on a
+// fresh install. Email is consulted exactly once, here, to decide which row gets
+// the binding; after that the subject alone identifies the user.
+func (s *ServiceImpl) LinkOIDC(ctx context.Context, identity OIDCIdentity) (*LoginResponse, error) {
+	if identity.Email == "" || !identity.EmailVerified {
+		return nil, ErrOIDCNotAdmin
+	}
+	key := OIDCSubjectKey(identity.Issuer, identity.Subject)
+	email := strings.ToLower(identity.Email)
+
+	user, err := s.repo.FindByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+
+	if user == nil {
+		// Fresh install: whoever the OP lets through first becomes the admin.
+		created, err := s.createFirstUser(ctx, &Model{
+			Email:       email,
+			Password:    "", // set later from the profile page
+			Active:      true,
+			OIDCSubject: key,
+		})
+		if err != nil {
+			return nil, ErrOIDCNotAdmin
+		}
+		return s.issueTokens(ctx, created)
+	}
+
+	if user.OIDCSubject != "" {
+		// Already bound elsewhere: email reassignment at the OP cannot take over.
+		return nil, ErrOIDCNotAdmin
+	}
+
+	linked, err := s.repo.LinkOIDCSubject(ctx, user.ID, key)
+	if err != nil {
+		return nil, err
+	}
+	if !linked {
+		// Lost the race against a concurrent link; only continue if the winner
+		// was us.
+		user, err = s.repo.FindByID(ctx, user.ID)
+		if err != nil {
+			return nil, err
+		}
+		if user == nil || user.OIDCSubject != key {
+			return nil, ErrOIDCNotAdmin
+		}
+	} else {
+		user.OIDCSubject = key
+	}
+
+	return s.issueTokens(ctx, user)
 }

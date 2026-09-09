@@ -120,6 +120,16 @@ func (maker *TokenMaker) VerifyToken(ctx context.Context, tokenString string, to
 			return nil, fmt.Errorf("access token secret key setting not found")
 		}
 		secretKey = secretSetting.Value
+	case "oidc":
+		// Short-lived state cookie; shares the access token secret.
+		secretSetting, err := maker.settingService.GetByKey(ctx, "ACCESS_TOKEN_SECRET_KEY")
+		if err != nil {
+			return nil, fmt.Errorf("failed to get access token secret key: %w", err)
+		}
+		if secretSetting == nil {
+			return nil, fmt.Errorf("access token secret key setting not found")
+		}
+		secretKey = secretSetting.Value
 	case "refresh":
 		secretSetting, err := maker.settingService.GetByKey(ctx, "REFRESH_TOKEN_SECRET_KEY")
 		if err != nil {
@@ -152,5 +162,69 @@ func (maker *TokenMaker) VerifyToken(ctx context.Context, tokenString string, to
 		return nil, ErrInvalidToken
 	}
 
+	return claims, nil
+}
+
+// OIDCStateClaims travels in the __Host-oidc_state cookie so no server-side
+// session store is needed and API replicas stay stateless.
+type OIDCStateClaims struct {
+	State    string `json:"state"`
+	Nonce    string `json:"nonce"`
+	Verifier string `json:"verifier"`
+	Type     string `json:"type"`
+	jwt.RegisteredClaims
+}
+
+func (maker *TokenMaker) accessSecret(ctx context.Context) (string, error) {
+	secretSetting, err := maker.settingService.GetByKey(ctx, "ACCESS_TOKEN_SECRET_KEY")
+	if err != nil {
+		return "", fmt.Errorf("failed to get access token secret key: %w", err)
+	}
+	if secretSetting == nil {
+		return "", fmt.Errorf("access token secret key setting not found")
+	}
+	return secretSetting.Value, nil
+}
+
+func (maker *TokenMaker) CreateOIDCStateToken(ctx context.Context, state, nonce, verifier string, ttl time.Duration) (string, error) {
+	secret, err := maker.accessSecret(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	claims := &OIDCStateClaims{
+		State:    state,
+		Nonce:    nonce,
+		Verifier: verifier,
+		Type:     "oidc",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(ttl)),
+			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
+		},
+	}
+
+	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(secret))
+}
+
+func (maker *TokenMaker) VerifyOIDCStateToken(ctx context.Context, tokenString string) (*OIDCStateClaims, error) {
+	secret, err := maker.accessSecret(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := jwt.ParseWithClaims(tokenString, &OIDCStateClaims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, ErrInvalidToken
+		}
+		return []byte(secret), nil
+	})
+	if err != nil {
+		return nil, ErrInvalidToken
+	}
+
+	claims, ok := token.Claims.(*OIDCStateClaims)
+	if !ok || !token.Valid || claims.Type != "oidc" {
+		return nil, ErrInvalidToken
+	}
 	return claims, nil
 }

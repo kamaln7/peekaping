@@ -11,6 +11,11 @@
       "submit": "Login",
       "title": "Welcome back"
     },
+    "oidc": {
+      "failed": "Single sign-on failed. Please try again.",
+      "not_admin": "This account is not the Peekaping admin",
+      "sign_in": "Sign in with SSO"
+    },
     "register": {
       "description": "Create your admin account",
       "have_account": "Already have an account?",

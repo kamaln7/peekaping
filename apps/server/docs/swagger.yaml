@@ -130,6 +130,11 @@ definitions:
       updatedAt:
         type: string
     type: object
+  auth.OIDCStatusResponse:
+    properties:
+      enabled:
+        type: boolean
+    type: object
   auth.RefreshTokenDto:
     properties:
       refreshToken:
@@ -1272,6 +1277,16 @@ definitions:
     - data
     - message
     type: object
+  utils.ApiResponse-auth_Model:
+    properties:
+      data:
+        $ref: '#/definitions/auth.Model'
+      message:
+        type: string
+    required:
+    - data
+    - message
+    type: object
   utils.ApiResponse-maintenance_MaintenanceResponseDto:
     properties:
       data:
@@ -1676,6 +1691,77 @@ paths:
           schema:
             $ref: '#/definitions/utils.APIError'
       summary: Login admin
+      tags:
+      - Auth
+  /auth/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.ApiResponse-auth_Model'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.APIError'
+      security:
+      - JwtAuth: []
+      summary: Current user
+      tags:
+      - Auth
+  /auth/oidc/callback:
+    get:
+      responses:
+        "302":
+          description: Found
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.APIError'
+      summary: OIDC authorization code callback
+      tags:
+      - Auth
+  /auth/oidc/client:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.APIError'
+      summary: OAuth client ID metadata document
+      tags:
+      - Auth
+  /auth/oidc/login:
+    get:
+      responses:
+        "302":
+          description: Found
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.APIError'
+      summary: Start the OIDC authorization code flow
+      tags:
+      - Auth
+  /auth/oidc/status:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.OIDCStatusResponse'
+      summary: Whether OIDC login is configured
       tags:
       - Auth
   /auth/password:

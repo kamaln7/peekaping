@@ -25,6 +25,13 @@ type Service interface {
 	Reset(ctx context.Context, key string) error
 }
 
+// Handlers that answer with a redirect instead of a status code (OIDC callback)
+// tell the guard the outcome through these context keys.
+const (
+	FailureKey = "bruteforce_failure"
+	SuccessKey = "bruteforce_success"
+)
+
 type KeyExtractor func(*gin.Context) (string, error)
 
 type Config struct {
@@ -98,9 +105,16 @@ func (g *Guard) Middleware() gin.HandlerFunc {
 
 		c.Next()
 
-		// After handler runs, decide success/failure by status
+		// After handler runs, decide success/failure by status, or by the explicit
+		// context keys when the handler redirects.
 		status := c.Writer.Status()
-		if g.isFailure(status) {
+		if c.GetBool(SuccessKey) {
+			if err := g.service.Reset(ctx, key); err != nil {
+				g.logger.Errorw("failed to reset bruteforce state", "key", key, "error", err)
+			}
+			return
+		}
+		if g.isFailure(status) || c.GetBool(FailureKey) {
 			now := time.Now()
 			// OnFailure atomically handles counting and locking
 			locked, until, err := g.service.OnFailure(ctx, key, now, g.cfg.Window, g.cfg.MaxAttempts, g.cfg.Lockout)

@@ -7,7 +7,9 @@ toolchain go1.24.3
 require (
 	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358
 	github.com/IBM/sarama v1.43.3
+	github.com/alicebob/miniredis/v2 v2.35.0
 	github.com/blues/jsonata-go v1.5.4
+	github.com/coreos/go-oidc/v3 v3.14.1
 	github.com/denisenkom/go-mssqldb v0.12.3
 	github.com/docker/docker v28.3.0+incompatible
 	github.com/eclipse/paho.mqtt.golang v1.5.0
@@ -45,6 +47,7 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.39.0
 	golang.org/x/net v0.41.0
+	golang.org/x/oauth2 v0.28.0
 	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
 )
@@ -55,7 +58,6 @@ require (
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
-	github.com/alicebob/miniredis/v2 v2.35.0 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
 	github.com/bytedance/sonic v1.13.2 // indirect
@@ -79,6 +81,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
 	github.com/gin-contrib/sse v1.0.0 // indirect
+	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect

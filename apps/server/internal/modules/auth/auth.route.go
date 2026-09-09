@@ -32,7 +32,13 @@ func (r *Route) ConnectRoute(router *gin.RouterGroup, controller *Controller) {
 
 	auth.POST("/refresh", controller.RefreshToken)
 
+	auth.GET("/oidc/status", controller.OIDCStatus)
+	auth.GET("/oidc/client", controller.OIDCClient)
+	auth.GET("/oidc/login", controller.OIDCLogin)
+	auth.GET("/oidc/callback", r.bruteforceGuard.Middleware(), controller.OIDCCallback)
+
 	auth.Use(r.middleware.Auth())
+	auth.GET("/me", controller.Me)
 	auth.POST("/2fa/setup", controller.SetupTwoFA)
 	auth.POST("/2fa/verify", controller.VerifyTwoFA)
 	auth.POST("/2fa/disable", controller.DisableTwoFA)

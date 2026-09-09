@@ -45,6 +45,14 @@ type Config struct {
 	BruteforceWindow      time.Duration `env:"BRUTEFORCE_WINDOW" default:"1m"`
 	BruteforceLockout     time.Duration `env:"BRUTEFORCE_LOCKOUT" default:"1m"`
 
+	// OIDC (OpenID Connect) single sign-on for the admin account.
+	// Unset OIDC_ISSUER disables the feature.
+	OIDCIssuer       string `env:"OIDC_ISSUER"`
+	OIDCClientID     string `env:"OIDC_CLIENT_ID"`
+	OIDCClientSecret string `env:"OIDC_CLIENT_SECRET"`
+	OIDCScopes       string `env:"OIDC_SCOPES" default:"openid email"`
+	OIDCRedirectURL  string `env:"OIDC_REDIRECT_URL"`
+
 	ServiceName string `env:"SERVICE_NAME" validate:"required,min=1" default:"peekaping:api"`
 }
 
@@ -125,5 +133,10 @@ func (c *Config) ToInternalConfig() *config.Config {
 		BruteforceWindow:      c.BruteforceWindow,
 		BruteforceLockout:     c.BruteforceLockout,
 		ServiceName:           c.ServiceName,
+		OIDCIssuer:            c.OIDCIssuer,
+		OIDCClientID:          c.OIDCClientID,
+		OIDCClientSecret:      c.OIDCClientSecret,
+		OIDCScopes:            c.OIDCScopes,
+		OIDCRedirectURL:       c.OIDCRedirectURL,
 	}
 }

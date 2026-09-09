@@ -12,6 +12,11 @@ import {
   postAuth2FaSetup,
   postAuth2FaVerify,
   postAuthLogin,
+  getAuthMe,
+  getAuthOidcCallback,
+  getAuthOidcClient,
+  getAuthOidcLogin,
+  getAuthOidcStatus,
   putAuthPassword,
   postAuthRefresh,
   postAuthRegister,
@@ -104,6 +109,11 @@ import type {
   PostAuthLoginData,
   PostAuthLoginError,
   PostAuthLoginResponse,
+  GetAuthMeData,
+  GetAuthOidcCallbackData,
+  GetAuthOidcClientData,
+  GetAuthOidcLoginData,
+  GetAuthOidcStatusData,
   PutAuthPasswordData,
   PutAuthPasswordError,
   PutAuthPasswordResponse,
@@ -655,6 +665,123 @@ export const postAuthLoginMutation = (
     },
   };
   return mutationOptions;
+};
+
+export const getAuthMeQueryKey = (options?: Options<GetAuthMeData>) =>
+  createQueryKey("getAuthMe", options);
+
+/**
+ * Current user
+ */
+export const getAuthMeOptions = (options?: Options<GetAuthMeData>) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getAuthMe({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getAuthMeQueryKey(options),
+  });
+};
+
+export const getAuthOidcCallbackQueryKey = (
+  options?: Options<GetAuthOidcCallbackData>
+) => createQueryKey("getAuthOidcCallback", options);
+
+/**
+ * OIDC authorization code callback
+ */
+export const getAuthOidcCallbackOptions = (
+  options?: Options<GetAuthOidcCallbackData>
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getAuthOidcCallback({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getAuthOidcCallbackQueryKey(options),
+  });
+};
+
+export const getAuthOidcClientQueryKey = (
+  options?: Options<GetAuthOidcClientData>
+) => createQueryKey("getAuthOidcClient", options);
+
+/**
+ * OAuth client ID metadata document
+ */
+export const getAuthOidcClientOptions = (
+  options?: Options<GetAuthOidcClientData>
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getAuthOidcClient({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getAuthOidcClientQueryKey(options),
+  });
+};
+
+export const getAuthOidcLoginQueryKey = (
+  options?: Options<GetAuthOidcLoginData>
+) => createQueryKey("getAuthOidcLogin", options);
+
+/**
+ * Start the OIDC authorization code flow
+ */
+export const getAuthOidcLoginOptions = (
+  options?: Options<GetAuthOidcLoginData>
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getAuthOidcLogin({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getAuthOidcLoginQueryKey(options),
+  });
+};
+
+export const getAuthOidcStatusQueryKey = (
+  options?: Options<GetAuthOidcStatusData>
+) => createQueryKey("getAuthOidcStatus", options);
+
+/**
+ * Whether OIDC login is configured
+ */
+export const getAuthOidcStatusOptions = (
+  options?: Options<GetAuthOidcStatusData>
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getAuthOidcStatus({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getAuthOidcStatusQueryKey(options),
+  });
 };
 
 /**

@@ -19,8 +19,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { postAuthLoginMutation } from "@/api/@tanstack/react-query.gen";
-import { useMutation } from "@tanstack/react-query";
+import {
+  getAuthOidcStatusOptions,
+  postAuthLoginMutation,
+} from "@/api/@tanstack/react-query.gen";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -34,6 +37,7 @@ import { Link } from "react-router-dom";
 import { useLocalizedTranslation } from "@/hooks/useTranslation";
 
 import { PasswordInput } from "@/components/ui/password-input";
+import { getConfig } from "@/lib/config";
 
 const formSchema = z.object({
   email: z.string().email("forms.validation.email_invalid"),
@@ -57,6 +61,7 @@ export function LoginForm({
   const setUser = useAuthStore(
     (state: { setUser: (user: AuthModel | null) => void }) => state.setUser
   );
+  const { data: oidcStatus } = useQuery(getAuthOidcStatusOptions());
   const [show2FAPrompt, setShow2FAPrompt] = React.useState(false);
   const [verifying2FA, setVerifying2FA] = React.useState(false);
 
@@ -185,6 +190,22 @@ export function LoginForm({
                   )}
                   {t("auth.login.submit")}
                 </Button>
+
+                {oidcStatus?.enabled && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      // Full page navigation: the API redirects to the provider.
+                      window.location.href = `${
+                        getConfig().API_URL
+                      }/api/v1/auth/oidc/login`;
+                    }}
+                  >
+                    {t("auth.oidc.sign_in")}
+                  </Button>
+                )}
 
                 <div className="text-center text-sm text-muted-foreground">
                   {t("auth.login.no_account")}{" "}

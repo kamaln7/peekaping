@@ -68,6 +68,10 @@ export type AuthModel = {
   updatedAt?: string;
 };
 
+export type AuthOidcStatusResponse = {
+  enabled?: boolean;
+};
+
 export type AuthRefreshTokenDto = {
   refreshToken: string;
 };
@@ -249,6 +253,10 @@ export type MonitorModel = {
    */
   interval?: number;
   /**
+   * Last heartbeat for push monitors
+   */
+  last_heartbeat?: SharedHeartBeatModel;
+  /**
    * Maximum retries before the service is marked as down and a notification is sent
    */
   max_retries?: number;
@@ -405,6 +413,21 @@ export type SettingModel = {
   type?: string;
   updated_at?: string;
   value?: string;
+};
+
+export type SharedHeartBeatModel = {
+  down_count?: number;
+  duration?: number;
+  end_time?: string;
+  id?: string;
+  important?: boolean;
+  monitor_id?: string;
+  msg?: string;
+  notified?: boolean;
+  ping?: number;
+  retries?: number;
+  status?: SharedMonitorStatus;
+  time?: string;
 };
 
 export type SharedMonitorStatus = 0 | 1 | 2 | 3;
@@ -596,6 +619,11 @@ export type UtilsApiResponseArrayTagModel = {
 
 export type UtilsApiResponseAuthLoginResponse = {
   data: AuthLoginResponse;
+  message: string;
+};
+
+export type UtilsApiResponseAuthModel = {
+  data: AuthModel;
   message: string;
 };
 
@@ -984,6 +1012,111 @@ export type PostAuthLoginResponses = {
 
 export type PostAuthLoginResponse =
   PostAuthLoginResponses[keyof PostAuthLoginResponses];
+
+export type GetAuthMeData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/auth/me";
+};
+
+export type GetAuthMeErrors = {
+  /**
+   * Unauthorized
+   */
+  401: UtilsApiError;
+};
+
+export type GetAuthMeError = GetAuthMeErrors[keyof GetAuthMeErrors];
+
+export type GetAuthMeResponses = {
+  /**
+   * OK
+   */
+  200: UtilsApiResponseAuthModel;
+};
+
+export type GetAuthMeResponse = GetAuthMeResponses[keyof GetAuthMeResponses];
+
+export type GetAuthOidcCallbackData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/auth/oidc/callback";
+};
+
+export type GetAuthOidcCallbackErrors = {
+  /**
+   * Not Found
+   */
+  404: UtilsApiError;
+};
+
+export type GetAuthOidcCallbackError =
+  GetAuthOidcCallbackErrors[keyof GetAuthOidcCallbackErrors];
+
+export type GetAuthOidcClientData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/auth/oidc/client";
+};
+
+export type GetAuthOidcClientErrors = {
+  /**
+   * Not Found
+   */
+  404: UtilsApiError;
+};
+
+export type GetAuthOidcClientError =
+  GetAuthOidcClientErrors[keyof GetAuthOidcClientErrors];
+
+export type GetAuthOidcClientResponses = {
+  /**
+   * OK
+   */
+  200: {
+    [key: string]: unknown;
+  };
+};
+
+export type GetAuthOidcClientResponse =
+  GetAuthOidcClientResponses[keyof GetAuthOidcClientResponses];
+
+export type GetAuthOidcLoginData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/auth/oidc/login";
+};
+
+export type GetAuthOidcLoginErrors = {
+  /**
+   * Not Found
+   */
+  404: UtilsApiError;
+};
+
+export type GetAuthOidcLoginError =
+  GetAuthOidcLoginErrors[keyof GetAuthOidcLoginErrors];
+
+export type GetAuthOidcStatusData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/auth/oidc/status";
+};
+
+export type GetAuthOidcStatusResponses = {
+  /**
+   * OK
+   */
+  200: AuthOidcStatusResponse;
+};
+
+export type GetAuthOidcStatusResponse =
+  GetAuthOidcStatusResponses[keyof GetAuthOidcStatusResponses];
 
 export type PutAuthPasswordData = {
   /**

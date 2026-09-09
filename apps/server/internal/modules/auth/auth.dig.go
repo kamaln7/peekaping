@@ -12,6 +12,7 @@ func RegisterDependencies(container *dig.Container, cfg *config.Config) {
 
 	container.Provide(NewRoute)
 	container.Provide(NewTokenMaker)
+	container.Provide(NewOIDC)
 	container.Provide(NewService)
 	container.Provide(NewController)
 	container.Provide(NewMiddlewareProvider)
