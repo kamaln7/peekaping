@@ -75,6 +75,18 @@ The API server subscribes to Redis pub/sub events and broadcasts them to connect
 | `BRUTEFORCE_WINDOW` | duration | No | `1m` | Time window for counting failed attempts |
 | `BRUTEFORCE_LOCKOUT` | duration | No | `1m` | Lockout duration after max attempts |
 
+### OIDC Configuration
+
+Optional single sign-on for the admin account; see [OIDC login](../self-hosting/oidc.md).
+
+| Variable | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `OIDC_ISSUER` | string | No | `""` | OP issuer URL; unset disables OIDC |
+| `OIDC_CLIENT_ID` | string | No | `""` | Registered client ID; unset uses a Client ID Metadata Document |
+| `OIDC_CLIENT_SECRET` | string | No | `""` | Client secret for a confidential client |
+| `OIDC_SCOPES` | string | No | `openid email` | Requested scopes; must contain `openid` |
+| `OIDC_REDIRECT_URL` | string | No | `{CLIENT_URL}/api/v1/auth/oidc/callback` | Callback URL registered at the OP |
+
 ## API Endpoints
 
 ### Core Resources
